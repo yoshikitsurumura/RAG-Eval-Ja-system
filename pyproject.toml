@@ -1,0 +1,67 @@
+[project]
+name = "laboro-rag-system"
+version = "0.1.0"
+description = "RAG System for Laboro.AI LLM Engineer Coding Challenge"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # Core
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "streamlit>=1.40.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.6.0",
+    "python-dotenv>=1.0.0",
+
+    # LLM & Embeddings
+    "openai>=1.55.0",
+    "langchain>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "langchain-community>=0.3.0",
+    "langgraph>=0.2.0",
+
+    # Vector Store
+    "qdrant-client>=1.12.0",
+
+    # PDF Processing
+    "pymupdf>=1.25.0",
+    "pdfplumber>=0.11.0",
+
+    # Data Processing
+    "datasets>=3.0.0",
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+
+    # HTTP & Async
+    "httpx>=0.28.0",
+    "aiofiles>=24.1.0",
+
+    # Evaluation
+    "ragas>=0.2.0",
+    "scikit-learn>=1.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true

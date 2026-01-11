@@ -1,0 +1,43 @@
+# API Server Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN pip install uv
+
+# Copy project files
+COPY pyproject.toml .
+COPY src/ ./src/
+COPY app/ ./app/
+COPY data/ ./data/
+
+# Create __init__.py files
+RUN touch src/__init__.py \
+    && touch src/config/__init__.py \
+    && touch src/ingestion/__init__.py \
+    && touch src/retrieval/__init__.py \
+    && touch src/generation/__init__.py \
+    && touch src/rag/__init__.py \
+    && touch src/agents/__init__.py \
+    && touch src/evaluation/__init__.py \
+    && touch app/__init__.py \
+    && touch app/api/__init__.py
+
+# Install dependencies with uv
+RUN uv pip install --system -e .
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Expose port
+EXPOSE 8000
+
+# Run API server
+CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
