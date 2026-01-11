@@ -1,0 +1,218 @@
+この課題では「日本語RAG評価データセットを使ったRAGシステムを、Docker前提のマルチコンテナ構成で実装し、さらにAgentic RAGまで発展させて評価・ドキュメント化する」ことが求められています。
+​
+
+以下、あなたが実際にやる作業を粒度細かく分解します。
+
+全体像の整理
+知識源: Hugging Face の allganize/RAG-Evaluation-Dataset-JA を使ったRAGシステム構築。
+​
+
+機能レベル:
+
+ベースラインRAG（ナイーブRAG）
+
+AgenticRAG（自分で定義＋実装）
+
+精度評価（RAGAS等で Faithfulness / Answer Relevancy / Context Precision など）
+​
+
+実装基盤:
+
+Python＋uv（パッケージ・プロジェクト管理）
+​
+
+Docker＋Docker Compose（UI / アプリ / DB のマルチコンテナ）
+
+LLM: OpenAI gpt-5-mini（生成）と text-embedding-3-small（埋め込み）
+
+成果物:
+
+ソース＋.git
+
+システム仕様書・環境構築手順書・実行手順書・精度評価レポート
+
+まずやるべきタスク（設計前準備）
+リポジトリ・uv・プロジェクト雛形
+
+uv でPythonプロジェクトを初期化し、仮想環境と依存パッケージの基本セットを決める。
+​
+
+最低限: OpenAI SDK / ベクトルDBクライアント（例: Chroma, Qdrant, pgvector） / Webフレームワーク（FastAPIやFlask） / DBドライバなど。
+
+データセットの理解
+
+allganize/RAG-Evaluation-Dataset-JA をローカルで読み込み、カラム構成（question, target_answer, target_file_name, target_page_no, domain, typeなど）を把握する。
+​
+
+どこまでを「知識ベース」とみなし、どこまでを「評価用クエリ」とするか方針を決める。
+
+Qiita記事の例のように datasets.load_dataset を使って全件ロードし、評価ループを回す前提を参考にする。
+​
+
+アーキテクチャのざっくり設計
+
+各コンテナの役割と通信を決める:
+
+UIサーバー: Webフロント（Next.js, React, SvelteKit, Streamlit, Gradio, FastAPI+Jinjaなど自由）
+
+アプリケーションサーバー: RAGロジック（埋め込み生成, 検索, LLM問い合わせ, Agentロジック）
+
+データベースサーバー: ドキュメント・メタ情報・評価結果・ログ保存用（PostgreSQLなど）
+
+ベクトルストアをどう持つか（DB内か別コンテナか）を決める。
+
+実装タスク：ナイーブRAG
+ドキュメント前処理・インデキシング
+
+評価データセットに付属する target_file_name / target_page_no などを使って「元文書相当」のテキストを構築する戦略を決める。
+​
+
+シンプルには:
+
+同一 target_file_name 単位でテキストをまとめる
+
+SentencePiece / tokenizer などでチャンク分割（例: 300〜500トークン）
+
+各チャンクに対して text-embedding-3-small で埋め込みベクトルを生成し、ベクトルストアに投入する。
+​
+
+クエリ処理フロー
+
+ユーザからの質問を受け取るAPIエンドポイントをアプリケーションサーバーに実装。
+
+フロー:
+
+質問を埋め込み
+
+ベクトル検索で類似チャンクを上位k件取得
+
+取得チャンクをコンテキストとして gpt-5-mini に投げて回答生成
+
+ここまでがベースラインのナイーブRAG。
+
+UIの最低限実装
+
+入力テキストボックス＋回答表示＋（可能なら）参照されたコンテキスト表示。
+
+UIサーバーからアプリケーションサーバーのAPIを叩く実装。
+
+実装タスク：Agentic RAG
+Agentic RAG の定義を自分なりに決める
+
+例えば SoftBank の解説にあるような以下のどれか／組み合わせをベースに定義する。
+​
+
+単一エージェント＋ツール利用（ReActパターン）
+
+グラフベースのワークフロー（条件分岐・ループ）
+
+マルチエージェント協調（役割分担）
+
+この課題用には過度に複雑にしすぎず、「ReActスタイルのツール呼び出し＋複数ステップ推論」や「LangGraph風の状態遷移で再検索ループを持つRAG」あたりが現実的。
+​
+
+Agentの設計と実装
+
+例: 「質問→計画立案→必要に応じて再検索→中間思考→最終回答」というステップを設計。
+
+ツールとして:
+
+search_docs（ベクトル検索）
+
+lookup_by_file_and_page（特定ファイル・ページに深掘り）
+
+summarize_contexts などを定義。
+
+LLMに「ツール呼び出し可能なプロンプト」を渡し、ReActやツール仕様に従ったプロトコルを組む。
+
+Agentic RAGのUIと切り替え
+
+UIから「モード: naive / agentic」を選択できるようにするか、APIのエンドポイントを分ける。
+
+Agenticモードでは、クエリ毎のステップログを見られるような簡易ビューを作ると評価者にわかりやすい。
+
+評価タスク（RAGAS等）
+評価スクリプトの作成
+
+Qiita記事のサンプルのように、allganize/RAG-Evaluation-Dataset-JA の test split をループし、各質問に対してアプリケーションのAPIを叩き、question, ground_truth, prediction, contexts をCSVに保存する。
+​
+
+NaiveとAgenticで同じ評価パイプラインを回せるようにする。
+
+RAGASによるメトリクス計算
+
+Faithfulness, Answer Relevancy, Context Precision などを計算するスクリプトを用意する。
+​
+
+結果を表形式でまとめ、Naive vs Agenticの差分を可視化（平均値・分布）。
+
+分析
+
+どのタイプの質問（domain, type）でAgenticが有利か／逆に悪化するかなど簡易分析を行う。
+​
+
+RAGの失敗パターン（コンテキスト不足・誤引用・幻覚）を数例ピックアップしてレポートに載せる。
+
+インフラ・コンテナ関連タスク
+Dockerfile ×3 と docker-compose.yml
+
+UIコンテナ:
+
+Node＋フロントフレームワーク or Python軽量UI（Streamlit等）
+
+アプリケーションコンテナ:
+
+uvで依存インストール＋FastAPI/Flaskサーバー起動。
+​
+
+DBコンテナ:
+
+PostgreSQL等の公式イメージ＋初期化SQL（スキーマ定義）
+
+OpenAI APIキーは .env やDocker Secretsなどで渡す（提出時は値をマスク）。
+
+起動・停止・初期化手順
+
+docker compose up で全て立ち上がる構成。
+
+初回起動時に:
+
+データセット読み込み→チャンク化→埋め込み→DB/ベクトルストアへ投入するコマンド（バッチスクリプト）を用意。
+
+ドキュメントで書くべき内容
+システム仕様書
+
+全体アーキ図（UI / App / DB / ベクトルストア / OpenAI）
+
+機能一覧（Naive RAG, Agentic RAG, 評価モジュール）
+
+データフロー（クエリがどのように処理されるか）
+
+環境構築手順書
+
+前提ツール: Docker, Docker Compose, uv のインストール。
+​
+
+.env の書き方（APIキーなど）
+
+初回インデックス作成手順
+
+実行手順書
+
+開発・本番相当の起動方法（docker compose up等）
+
+Web UIアクセスURL
+
+評価スクリプトの実行方法（Naive / Agenticを指定するオプション含む）
+
+精度評価レポート
+
+評価条件（データセットsplit, サンプリング有無）
+​
+
+指標の定義（Faithfulness, Answer Relevancy, Context Precision）
+​
+
+Naive vs Agentic のスコア比較と考察
+
+失敗例と改善案
