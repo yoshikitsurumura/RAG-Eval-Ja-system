@@ -13,10 +13,11 @@ RUN apt-get update && apt-get install -y \
 RUN pip install uv
 
 # Copy project files
-COPY pyproject.toml .
+COPY pyproject.toml README.md ./
 COPY src/ ./src/
 COPY app/ ./app/
 COPY data/ ./data/
+COPY scripts/ ./scripts/
 
 # Create __init__.py files
 RUN touch src/__init__.py \
