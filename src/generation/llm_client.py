@@ -89,12 +89,23 @@ class OpenAIClient(LLMClientBase):
         max_tokens: int = 1024,
     ) -> LLMResponse:
         """チャット形式で生成"""
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        # gpt-5-mini などの新しいモデルは max_completion_tokens を使用
+        completion_params = {
+            "model": self.model,
+            "messages": messages,
+        }
+
+        # gpt-5-mini は temperature=0.0 をサポートしていない（デフォルトの1のみ）
+        if "gpt-5-mini" not in self.model:
+            completion_params["temperature"] = temperature
+
+        # モデルに応じてパラメータを切り替え
+        if "gpt-5" in self.model or "gpt-4o" in self.model:
+            completion_params["max_completion_tokens"] = max_tokens
+        else:
+            completion_params["max_tokens"] = max_tokens
+
+        response = self.client.chat.completions.create(**completion_params)
 
         choice = response.choices[0]
         usage = response.usage
