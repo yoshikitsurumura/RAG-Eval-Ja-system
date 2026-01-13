@@ -88,8 +88,8 @@ class AgenticRAG(RAGBase):
         embedder: Optional[EmbedderBase] = None,
         llm_client: Optional[LLMClientBase] = None,
         retriever: Optional[RetrieverBase] = None,
-        top_k: int = 5,
-        max_iterations: int = 2,
+        top_k: int = 3,
+        max_iterations: int = 1,
         quality_threshold: int = 4,
     ):
         """
@@ -240,7 +240,7 @@ class AgenticRAG(RAGBase):
         # 回答生成
         context = self._format_context(sources)
         prompt = self.answer_generator_prompt.format(context=context, question=question)
-        response = self.llm_client.generate(prompt, temperature=0.0)
+        response = self.llm_client.generate(prompt, temperature=0.0, max_tokens=8192)
 
         return RAGResponse(
             question=question,

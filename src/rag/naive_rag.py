@@ -109,6 +109,7 @@ class NaiveRAG(RAGBase):
         response = self.llm_client.generate(
             prompt=prompt,
             system_prompt=self.system_prompt.template,
+            max_tokens=8192,  # gpt-5-miniは推論トークンも含むため大きめに設定
         )
 
         logger.info(f"Generated answer ({response.usage.get('total_tokens', 0)} tokens)")

@@ -149,7 +149,7 @@ class LLMJudgeMetric(MetricBase):
 スコア: [1-5の数字]
 理由: [評価理由]"""
 
-        response = self.llm_client.generate(prompt, temperature=0.0)
+        response = self.llm_client.generate(prompt, temperature=0.0, max_tokens=2048)
 
         # レスポンスをパース
         try:

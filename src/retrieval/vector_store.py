@@ -121,7 +121,8 @@ class QdrantVectorStore(VectorStoreBase):
 
     def search(self, query_embedding: list[float], top_k: int = 5) -> list[SearchResult]:
         """類似検索"""
-        try:
+        # hasattr を使用してメソッドの存在を事前チェック
+        if hasattr(self.client, "query_points"):
             # 新しいqdrant-client (v1.7+) では query_points を使用
             results = self.client.query_points(
                 collection_name=self.collection_name,
@@ -129,12 +130,13 @@ class QdrantVectorStore(VectorStoreBase):
                 limit=top_k,
                 with_payload=True,
             ).points
-        except AttributeError:
-            # 古いバージョンのフォールバック
+        else:
+            # 古いバージョンのフォールバック (with_payload=True を追加)
             results = self.client.search(
                 collection_name=self.collection_name,
                 query_vector=query_embedding,
                 limit=top_k,
+                with_payload=True,
             )
 
         search_results = []

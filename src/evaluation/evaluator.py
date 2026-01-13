@@ -248,7 +248,13 @@ class RAGEvaluator:
 
         # 詳細CSV
         detail_path = output_dir / f"evaluation_detail_{report.rag_name}.csv"
-        report.to_dataframe().to_csv(detail_path, index=False, encoding="utf-8-sig")
+        report.to_dataframe().to_csv(
+            detail_path,
+            index=False,
+            encoding="utf-8-sig",
+            quoting=1,  # QUOTE_ALL: すべてのフィールドを引用符で囲む
+            escapechar='\\',
+        )
 
         logger.info(f"Saved report to {output_dir}")
 
