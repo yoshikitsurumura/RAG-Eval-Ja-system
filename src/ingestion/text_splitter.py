@@ -47,8 +47,8 @@ class RecursiveTextSplitter(TextSplitterBase):
 
     def __init__(
         self,
-        chunk_size: int = 500,
-        chunk_overlap: int = 100,
+        chunk_size: int = 800,
+        chunk_overlap: int = 200,
     ):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
@@ -107,8 +107,8 @@ class TableAwareTextSplitter(TextSplitterBase):
 
     def __init__(
         self,
-        chunk_size: int = 500,
-        chunk_overlap: int = 100,
+        chunk_size: int = 800,
+        chunk_overlap: int = 200,
     ):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
@@ -163,8 +163,8 @@ class TableAwareTextSplitter(TextSplitterBase):
 
 def get_text_splitter(
     splitter_type: str = "recursive",
-    chunk_size: int = 500,
-    chunk_overlap: int = 100,
+    chunk_size: int = 800,
+    chunk_overlap: int = 200,
 ) -> TextSplitterBase:
     """テキスト分割器ファクトリー"""
     splitters = {

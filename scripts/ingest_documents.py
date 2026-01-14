@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 def ingest_pdfs(
     pdf_dir: Path,
-    chunk_size: int = 500,
-    chunk_overlap: int = 100,
+    chunk_size: int = 800,
+    chunk_overlap: int = 200,
     parser_type: str = "hybrid",
     use_mock_embedder: bool = False,
 ):
@@ -113,14 +113,14 @@ def main():
     parser.add_argument(
         "--chunk-size",
         type=int,
-        default=500,
-        help="Chunk size (default: 500)",
+        default=800,
+        help="Chunk size (default: 800)",
     )
     parser.add_argument(
         "--chunk-overlap",
         type=int,
-        default=100,
-        help="Chunk overlap (default: 100)",
+        default=200,
+        help="Chunk overlap (default: 200)",
     )
     parser.add_argument(
         "--parser",

@@ -38,7 +38,7 @@ class NaiveRAG(RAGBase):
         embedder: Optional[EmbedderBase] = None,
         llm_client: Optional[LLMClientBase] = None,
         retriever: Optional[RetrieverBase] = None,
-        top_k: int = 5,
+        top_k: int = 10,
     ):
         """
         初期化

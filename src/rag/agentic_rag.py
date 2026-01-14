@@ -88,8 +88,8 @@ class AgenticRAG(RAGBase):
         embedder: Optional[EmbedderBase] = None,
         llm_client: Optional[LLMClientBase] = None,
         retriever: Optional[RetrieverBase] = None,
-        top_k: int = 3,
-        max_iterations: int = 1,
+        top_k: int = 7,
+        max_iterations: int = 2,
         quality_threshold: int = 4,
     ):
         """
