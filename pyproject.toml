@@ -40,6 +40,12 @@ dependencies = [
     # Evaluation
     "ragas>=0.2.0",
     "scikit-learn>=1.5.0",
+
+    # V3: Hybrid Search & Reranking
+    "rank-bm25>=0.2.2",
+    "sentence-transformers>=2.2.2",
+    "sudachipy>=0.6.7",
+    "sudachidict-core>=20230110",
 ]
 
 [project.optional-dependencies]

@@ -47,7 +47,7 @@ class NaiveRAG(RAGBase):
             vector_store: ベクトルストア（省略時はデフォルト）
             embedder: 埋め込み生成器（省略時はデフォルト）
             llm_client: LLMクライアント（省略時はデフォルト）
-            retriever: リトリーバー（省略時はSimpleRetrieverを使用）
+            retriever: リトリーバー（省略時は設定のretriever_typeを使用）
             top_k: 検索結果の取得数
         """
         settings = get_settings()
@@ -57,11 +57,31 @@ class NaiveRAG(RAGBase):
         self.vector_store = vector_store or get_vector_store()
         self.embedder = embedder or get_embedder()
         self.llm_client = llm_client or get_llm_client()
-        self.retriever = retriever or get_retriever(
-            retriever_type="simple",
-            vector_store=self.vector_store,
-            embedder=self.embedder,
-        )
+
+        # リトリーバーの初期化（設定から読み込み）
+        if retriever:
+            self.retriever = retriever
+        else:
+            retriever_type = settings.retriever_type
+            retriever_kwargs = {
+                "vector_store": self.vector_store,
+                "embedder": self.embedder,
+            }
+
+            # HybridRetrieverの場合は追加パラメータを設定
+            if retriever_type == "hybrid":
+                retriever_kwargs.update(
+                    {
+                        "alpha": settings.hybrid_alpha,
+                        "rrf_k": settings.rrf_k,
+                        "use_rerank": settings.use_rerank,
+                    }
+                )
+
+            self.retriever = get_retriever(
+                retriever_type=retriever_type,
+                **retriever_kwargs,
+            )
 
         # プロンプトテンプレート
         self.system_prompt = get_prompt("naive_rag_system")

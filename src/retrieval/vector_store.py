@@ -7,6 +7,7 @@ Qdrantを使用したベクトル検索
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Optional, Any
 from uuid import uuid4
 
 from qdrant_client import QdrantClient
@@ -41,8 +42,13 @@ class VectorStoreBase(ABC):
         pass
 
     @abstractmethod
-    def search(self, query_embedding: list[float], top_k: int = 5) -> list[SearchResult]:
-        """類似検索"""
+    def search(
+        self, 
+        query_embedding: list[float], 
+        top_k: int = 5,
+        metadata_filter: Optional[dict[str, Any]] = None
+    ) -> list[SearchResult]:
+        """類似検索（メタデータフィルタ対応）"""
         pass
 
     @abstractmethod
@@ -119,23 +125,42 @@ class QdrantVectorStore(VectorStoreBase):
 
         return len(points)
 
-    def search(self, query_embedding: list[float], top_k: int = 5) -> list[SearchResult]:
-        """類似検索"""
+    def search(
+        self, 
+        query_embedding: list[float], 
+        top_k: int = 5,
+        metadata_filter: Optional[dict[str, Any]] = None
+    ) -> list[SearchResult]:
+        """類似検索（メタデータフィルタ対応）"""
+        
+        # Qdrantのフィルタオブジェクトを構築
+        qdrant_filter = None
+        if metadata_filter:
+            must_clauses = []
+            for key, value in metadata_filter.items():
+                must_clauses.append(
+                    qdrant_models.FieldCondition(
+                        key=key,
+                        match=qdrant_models.MatchValue(value=value)
+                    )
+                )
+            qdrant_filter = qdrant_models.Filter(must=must_clauses)
+
         # hasattr を使用してメソッドの存在を事前チェック
         if hasattr(self.client, "query_points"):
-            # 新しいqdrant-client (v1.7+) では query_points を使用
             results = self.client.query_points(
                 collection_name=self.collection_name,
                 query=query_embedding,
                 limit=top_k,
+                query_filter=qdrant_filter,
                 with_payload=True,
             ).points
         else:
-            # 古いバージョンのフォールバック (with_payload=True を追加)
             results = self.client.search(
                 collection_name=self.collection_name,
                 query_vector=query_embedding,
                 limit=top_k,
+                query_filter=qdrant_filter,
                 with_payload=True,
             )
 
@@ -174,7 +199,6 @@ class QdrantVectorStore(VectorStoreBase):
         info = self.client.get_collection(collection_name=self.collection_name)
         return {
             "name": self.collection_name,
-            # "vectors_count": info.vectors_count, # Fixed: attribute error
             "status": info.status,
             "points_count": info.points_count,
         }
