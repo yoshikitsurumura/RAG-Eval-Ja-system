@@ -3,29 +3,29 @@
   "total_questions": 10,
   "metrics_summary": {
     "answer_correctness": {
-      "mean": 0.6,
+      "mean": 0.5,
       "min": 0.0,
       "max": 1.0
     },
     "llm_judge": {
-      "mean": 0.66,
+      "mean": 0.72,
       "min": 0.2,
       "max": 1.0
     },
-    "accuracy": 0.6
+    "accuracy": 0.5
   },
   "domain_breakdown": {
     "finance": {
       "total": 10,
-      "correct": 6,
-      "accuracy": 0.6
+      "correct": 5,
+      "accuracy": 0.5
     }
   },
   "type_breakdown": {
     "paragraph": {
       "total": 4,
-      "correct": 3,
-      "accuracy": 0.75
+      "correct": 2,
+      "accuracy": 0.5
     },
     "image": {
       "total": 4,
@@ -38,5 +38,5 @@
       "accuracy": 0.5
     }
   },
-  "timestamp": "2026-01-15T11:01:09.520834"
+  "timestamp": "2026-01-13T13:57:43.511022"
 }
