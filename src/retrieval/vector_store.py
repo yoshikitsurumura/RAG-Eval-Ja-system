@@ -7,6 +7,7 @@ Qdrantを使用したベクトル検索
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Optional, Any
 from uuid import uuid4
 
 from qdrant_client import QdrantClient
@@ -41,18 +42,18 @@ class VectorStoreBase(ABC):
         pass
 
     @abstractmethod
-    def search(self, query_embedding: list[float], top_k: int = 5) -> list[SearchResult]:
-        """類似検索"""
+    def search(
+        self, 
+        query_embedding: list[float], 
+        top_k: int = 5,
+        metadata_filter: Optional[dict[str, Any]] = None
+    ) -> list[SearchResult]:
+        """類似検索（メタデータフィルタ対応）"""
         pass
 
     @abstractmethod
     def delete_collection(self) -> bool:
         """コレクションを削除"""
-        pass
-
-    @abstractmethod
-    def get_all_chunks(self) -> list[SearchResult]:
-        """全チャンクを取得（BM25インデックス構築用）"""
         pass
 
 
@@ -124,23 +125,42 @@ class QdrantVectorStore(VectorStoreBase):
 
         return len(points)
 
-    def search(self, query_embedding: list[float], top_k: int = 5) -> list[SearchResult]:
-        """類似検索"""
+    def search(
+        self, 
+        query_embedding: list[float], 
+        top_k: int = 5,
+        metadata_filter: Optional[dict[str, Any]] = None
+    ) -> list[SearchResult]:
+        """類似検索（メタデータフィルタ対応）"""
+        
+        # Qdrantのフィルタオブジェクトを構築
+        qdrant_filter = None
+        if metadata_filter:
+            must_clauses = []
+            for key, value in metadata_filter.items():
+                must_clauses.append(
+                    qdrant_models.FieldCondition(
+                        key=key,
+                        match=qdrant_models.MatchValue(value=value)
+                    )
+                )
+            qdrant_filter = qdrant_models.Filter(must=must_clauses)
+
         # hasattr を使用してメソッドの存在を事前チェック
         if hasattr(self.client, "query_points"):
-            # 新しいqdrant-client (v1.7+) では query_points を使用
             results = self.client.query_points(
                 collection_name=self.collection_name,
                 query=query_embedding,
                 limit=top_k,
+                query_filter=qdrant_filter,
                 with_payload=True,
             ).points
         else:
-            # 古いバージョンのフォールバック (with_payload=True を追加)
             results = self.client.search(
                 collection_name=self.collection_name,
                 query_vector=query_embedding,
                 limit=top_k,
+                query_filter=qdrant_filter,
                 with_payload=True,
             )
 
@@ -179,64 +199,9 @@ class QdrantVectorStore(VectorStoreBase):
         info = self.client.get_collection(collection_name=self.collection_name)
         return {
             "name": self.collection_name,
-            # "vectors_count": info.vectors_count, # Fixed: attribute error
             "status": info.status,
             "points_count": info.points_count,
         }
-
-    def get_all_chunks(self) -> list[SearchResult]:
-        """
-        全チャンクを取得（BM25インデックス構築用）
-
-        Returns:
-            全チャンクのリスト
-        """
-        # Qdrantから全ポイントを取得
-        try:
-            # scrollメソッドで全ポイントを取得
-            offset = None
-            all_points = []
-            batch_size = 100
-
-            while True:
-                points, offset = self.client.scroll(
-                    collection_name=self.collection_name,
-                    limit=batch_size,
-                    offset=offset,
-                    with_payload=True,
-                    with_vectors=False,  # ベクトルは不要
-                )
-
-                if not points:
-                    break
-
-                # SearchResultに変換
-                for point in points:
-                    payload = point.payload or {}
-                    all_points.append(
-                        SearchResult(
-                            chunk_id=payload.get("chunk_id", ""),
-                            content=payload.get("content", ""),
-                            score=1.0,  # スコアは未使用
-                            source_file=payload.get("source_file", ""),
-                            page_number=payload.get("page_number", 0),
-                            metadata={
-                                k: v
-                                for k, v in payload.items()
-                                if k not in ["chunk_id", "content", "source_file", "page_number"]
-                            },
-                        )
-                    )
-
-                if offset is None:
-                    break
-
-            logger.info(f"Retrieved {len(all_points)} chunks from vector store")
-            return all_points
-
-        except Exception as e:
-            logger.error(f"Failed to get all chunks: {e}")
-            return []
 
 
 def get_vector_store(store_type: str = "qdrant", **kwargs) -> VectorStoreBase:

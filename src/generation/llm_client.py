@@ -4,6 +4,7 @@ LLMクライアントモジュール
 OpenAI APIを使用したテキスト生成
 """
 
+import base64
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -47,6 +48,16 @@ class LLMClientBase(ABC):
         max_tokens: int = 1024,
     ) -> LLMResponse:
         """チャット形式で生成"""
+        pass
+
+    @abstractmethod
+    def describe_image(
+        self,
+        image_bytes: bytes,
+        prompt: str = "この画像の内容を詳しく説明してください。図表やグラフの場合はその内容を詳細にテキスト化してください。",
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        """画像を説明"""
         pass
 
 
@@ -123,6 +134,56 @@ class OpenAIClient(LLMClientBase):
             },
         )
 
+    def describe_image(
+        self,
+        image_bytes: bytes,
+        prompt: str = "この画像の内容を詳しく説明してください。図表やグラフの場合はその内容を詳細にテキスト化してください。",
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        """画像を説明"""
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        # 画像解析には gpt-4o または gpt-4o-mini を使用
+        model = self.model
+        if "gpt-4" not in model and "gpt-4o" not in model:
+            model = "gpt-4o-mini"
+
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+                    },
+                ],
+            }
+        ]
+
+        # 直接クライアントを呼んで Vision API を使用
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_tokens=max_tokens,
+        )
+
+        choice = response.choices[0]
+        usage = response.usage
+
+        return LLMResponse(
+            content=choice.message.content or "",
+            model=response.model,
+            usage={
+                "prompt_tokens": usage.prompt_tokens if usage else 0,
+                "completion_tokens": usage.completion_tokens if usage else 0,
+                "total_tokens": usage.total_tokens if usage else 0,
+            },
+            metadata={
+                "finish_reason": choice.finish_reason,
+            },
+        )
+
 
 class MockLLMClient(LLMClientBase):
     """
@@ -158,6 +219,20 @@ class MockLLMClient(LLMClientBase):
         """ダミーチャット"""
         last_message = messages[-1]["content"] if messages else ""
         return self.generate(last_message)
+
+    def describe_image(
+        self,
+        image_bytes: bytes,
+        prompt: str = "この画像の内容を詳しく説明してください。図表やグラフの場合はその内容を詳細にテキスト化してください。",
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        """ダミー画像説明"""
+        return LLMResponse(
+            content=f"[Mock Image Description] Detailed description of an image.",
+            model="mock-vision-model",
+            usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            metadata={"mock": True},
+        )
 
 
 def get_llm_client(client_type: str = "openai", **kwargs) -> LLMClientBase:

@@ -22,6 +22,7 @@ class ParsedPage:
     page_number: int
     text: str
     tables: list[list[list[str]]] = field(default_factory=list)
+    images: list[bytes] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
 
 
@@ -59,12 +60,27 @@ class PyMuPDFParser(PDFParserBase):
         pages = []
         with fitz.open(file_path) as doc:
             for page_num, page in enumerate(doc, start=1):
+                # テキスト抽出
                 text = page.get_text("text")
+
+                # 画像抽出
+                images = []
+                image_list = page.get_images()
+                for img in image_list:
+                    xref = img[0]
+                    base_image = doc.extract_image(xref)
+                    image_bytes = base_image["image"]
+
+                    # 小さすぎる画像（10KB未満）はノイズとして除外
+                    if len(image_bytes) > 10240:
+                        images.append(image_bytes)
+
                 pages.append(
                     ParsedPage(
                         page_number=page_num,
                         text=text.strip(),
-                        metadata={"method": "pymupdf"},
+                        images=images,
+                        metadata={"method": "pymupdf", "image_count": len(images)},
                     )
                 )
 
@@ -118,7 +134,7 @@ class HybridPDFParser(PDFParserBase):
     """
     ハイブリッドパーサー
 
-    - PyMuPDF: 基本テキスト抽出（高速）
+    - PyMuPDF: 基本テキスト抽出（高速） + 画像抽出
     - pdfplumber: 表抽出
     """
 
@@ -130,7 +146,7 @@ class HybridPDFParser(PDFParserBase):
         """ハイブリッドパース"""
         logger.info(f"Parsing with Hybrid method: {file_path.name}")
 
-        # PyMuPDFで基本テキスト
+        # PyMuPDFでテキストと画像
         pymupdf_doc = self.pymupdf_parser.parse(file_path)
 
         # pdfplumberで表を抽出
@@ -141,16 +157,18 @@ class HybridPDFParser(PDFParserBase):
         for pymupdf_page, pdfplumber_page in zip(
             pymupdf_doc.pages, pdfplumber_doc.pages, strict=False
         ):
-            # テキストはPyMuPDFを優先（通常より正確）
+            # テキストと画像はPyMuPDFから取得
             # 表はpdfplumberから取得
             merged_pages.append(
                 ParsedPage(
                     page_number=pymupdf_page.page_number,
                     text=pymupdf_page.text,
                     tables=pdfplumber_page.tables,
+                    images=pymupdf_page.images,
                     metadata={
                         "method": "hybrid",
                         "has_tables": len(pdfplumber_page.tables) > 0,
+                        "image_count": len(pymupdf_page.images),
                     },
                 )
             )
