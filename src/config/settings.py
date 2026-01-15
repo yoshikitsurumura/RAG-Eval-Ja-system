@@ -44,9 +44,15 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", description="Log Level")
 
     # RAG Configuration
-    chunk_size: int = Field(default=500, description="Text chunk size")
-    chunk_overlap: int = Field(default=100, description="Chunk overlap")
+    chunk_size: int = Field(default=800, description="Text chunk size")
+    chunk_overlap: int = Field(default=200, description="Chunk overlap")
     retrieval_top_k: int = Field(default=5, description="Number of documents to retrieve")
+    retriever_type: str = Field(
+        default="hybrid", description="Retriever type: simple, hybrid, multi_query"
+    )
+    use_rerank: bool = Field(default=True, description="Use reranking in hybrid retriever")
+    hybrid_alpha: float = Field(default=0.7, description="Vector search weight in hybrid retriever (0.7 = vector重視)")
+    rrf_k: int = Field(default=60, description="RRF parameter in hybrid retriever")
 
     # Paths
     @property

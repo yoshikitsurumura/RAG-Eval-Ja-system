@@ -1,0 +1,42 @@
+{
+  "rag_name": "NaiveRAG",
+  "total_questions": 10,
+  "metrics_summary": {
+    "answer_correctness": {
+      "mean": 0.6,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "llm_judge": {
+      "mean": 0.66,
+      "min": 0.2,
+      "max": 1.0
+    },
+    "accuracy": 0.6
+  },
+  "domain_breakdown": {
+    "finance": {
+      "total": 10,
+      "correct": 6,
+      "accuracy": 0.6
+    }
+  },
+  "type_breakdown": {
+    "paragraph": {
+      "total": 4,
+      "correct": 3,
+      "accuracy": 0.75
+    },
+    "image": {
+      "total": 4,
+      "correct": 2,
+      "accuracy": 0.5
+    },
+    "table": {
+      "total": 2,
+      "correct": 1,
+      "accuracy": 0.5
+    }
+  },
+  "timestamp": "2026-01-15T11:01:09.520834"
+}

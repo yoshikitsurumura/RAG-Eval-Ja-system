@@ -50,6 +50,11 @@ class VectorStoreBase(ABC):
         """コレクションを削除"""
         pass
 
+    @abstractmethod
+    def get_all_chunks(self) -> list[SearchResult]:
+        """全チャンクを取得（BM25インデックス構築用）"""
+        pass
+
 
 class QdrantVectorStore(VectorStoreBase):
     """Qdrantベクトルストア"""
@@ -178,6 +183,60 @@ class QdrantVectorStore(VectorStoreBase):
             "status": info.status,
             "points_count": info.points_count,
         }
+
+    def get_all_chunks(self) -> list[SearchResult]:
+        """
+        全チャンクを取得（BM25インデックス構築用）
+
+        Returns:
+            全チャンクのリスト
+        """
+        # Qdrantから全ポイントを取得
+        try:
+            # scrollメソッドで全ポイントを取得
+            offset = None
+            all_points = []
+            batch_size = 100
+
+            while True:
+                points, offset = self.client.scroll(
+                    collection_name=self.collection_name,
+                    limit=batch_size,
+                    offset=offset,
+                    with_payload=True,
+                    with_vectors=False,  # ベクトルは不要
+                )
+
+                if not points:
+                    break
+
+                # SearchResultに変換
+                for point in points:
+                    payload = point.payload or {}
+                    all_points.append(
+                        SearchResult(
+                            chunk_id=payload.get("chunk_id", ""),
+                            content=payload.get("content", ""),
+                            score=1.0,  # スコアは未使用
+                            source_file=payload.get("source_file", ""),
+                            page_number=payload.get("page_number", 0),
+                            metadata={
+                                k: v
+                                for k, v in payload.items()
+                                if k not in ["chunk_id", "content", "source_file", "page_number"]
+                            },
+                        )
+                    )
+
+                if offset is None:
+                    break
+
+            logger.info(f"Retrieved {len(all_points)} chunks from vector store")
+            return all_points
+
+        except Exception as e:
+            logger.error(f"Failed to get all chunks: {e}")
+            return []
 
 
 def get_vector_store(store_type: str = "qdrant", **kwargs) -> VectorStoreBase:
